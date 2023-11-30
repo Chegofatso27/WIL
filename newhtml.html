@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style.css" type="text/css"/>
+    <link rel="stylesheet" href="style.css" type="text/css">
+
+
+    <title>Online Bus Registration System</title>
+    <style>
+        body {
+            padding: 20px;
+        }
+
+        .bus-info {
+            margin-bottom: 10px;
+        }
+
+        #result {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+    <h1>Online Bus Registration System</h1>
+
+    <div class="bus-info">
+        <label for="busNumber">Bus Number:</label>
+        <input type="text" id="busNumber" class="form-control" required>
+    </div>
+
+    <div class="bus-info">
+        <label for="destination">Destination:</label>
+        <input type="text" id="destination" class="form-control" required>
+    </div>
+
+    <div class="bus-info">
+        <label for="availableSeats">Available Seats:</label>
+        <input type="number" id="availableSeats" class="form-control" required>
+    </div>
+
+    <button class="btn btn-primary" onclick="registerBus()">Register Bus</button>
+
+    <h2>Available Buses</h2>
+    <div id="buses" class="mb-3"></div>
+
+    <h2>Book Seats</h2>
+    <div class="bus-info">
+        <label for="selectedBus">Select Bus:</label>
+        <select id="selectedBus" class="form-control" onchange="updateAvailableSeats()">
+            <option value="">Select Bus</option>
+        </select>
+    </div>
+
+    <div class="bus-info">
+        <label for="seatsToBook">Seats to Book:</label>
+        <input type="number" id="seatsToBook" class="form-control" required>
+    </div>
+
+    <button class="btn btn-success" onclick="bookSeats()">Book Seats</button>
+
+    <div id="result"></div>
+
+    <?php
+$serverName = "LAPTOP-0VFKGIJV"; // replace with your server name
+$connectionOptions = array(
+    "Database" => "BusRegistrationSystem", // replace with your database name
+    "Uid" => "LAPTOP-0VFKGIJV\" // replace with your database username
+);
+
+// Establishes the connection
+$conn = sqlsrv_connect($serverName, $connectionOptions);
+
+// Check the connection
+if (!$conn) {
+    die(print_r(sqlsrv_errors(), true));
+}
+?>
+
+        // PHP code for report generation
+        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["generateReport"])) {
+            generateReport();
+        }
+
+        function generateReport() {
+            global $buses;
+            $xml = new SimpleXMLElement('<buses></buses>');
+
+            foreach ($buses as $bus) {
+                $busXML = $xml->addChild('bus');
+                $busXML->addChild('busNumber', $bus['busNumber']);
+                $busXML->addChild('destination', $bus['destination']);
+                $busXML->addChild('availableSeats', $bus['availableSeats']);
+            }
+
+            $xml->asXML('bus_report.xml');
+            echo '<div class="alert alert-success" role="alert">Report generated successfully! Check <a href="bus_report.xml" target="_blank">bus_report.xml</a></div>';
+        }
+    ?>
+
+    <form method="post">
+        <button type="submit" name="generateReport" class="btn btn-info">Generate Report</button>
+    </form>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script>
+        // Simulated API
+        let buses = [];
+
+        function registerBus() {
+            const busNumber = document.getElementById('busNumber').value;
+            const destination = document.getElementById('destination').value;
+            const availableSeats = parseInt(document.getElementById('availableSeats').value);
+
+            const bus = { busNumber, destination, availableSeats };
+            buses.push(bus);
+
+            displayBuses();
+            clearInputs();
+        }
+
+        function displayBuses() {
+            const busesContainer = document.getElementById('buses');
+            busesContainer.innerHTML = '';
+
+            buses.forEach((bus, index) => {
+                const busCard = document.createElement('div');
+                busCard.className = 'card mb-2';
+                busCard.innerHTML = `
+                    <div class="card-body">
+                        <h5 class="card-title">Bus Number: ${bus.busNumber}</h5>
+                        <p class="card-text">Destination: ${bus.destination}</p>
+                        <p class="card-text">Available Seats: ${bus.availableSeats}</p>
+                    </div>
+                `;
+                busesContainer.appendChild(busCard);
+
+                // Populate the dropdown for booking
+                const selectBusDropdown = document.getElementById('selectedBus');
+                const option = document.createElement('option');
+                option.value = index.toString();
+                option.textContent = `Bus ${bus.busNumber} - ${bus.destination}`;
+                selectBusDropdown.appendChild(option);
+            });
+        }
+
+        function updateAvailableSeats() {
+            const selectedBusIndex = document.getElementById('selectedBus').value;
+            const availableSeatsInput = document.getElementById('seatsToBook');
+
+            if (selectedBusIndex !== '') {
+                availableSeatsInput.max = buses[selectedBusIndex].availableSeats;
+            } else {
+                availableSeatsInput.max = 0;
+            }
+        }
+
+        function bookSeats() {
+            const selectedBusIndex = document.getElementById('selectedBus').value;
+            const seatsToBook = parseInt(document.getElementById('seatsToBook').value);
+
+            if (selectedBusIndex !== '' && !isNaN(seatsToBook) && seatsToBook > 0) {
+                const selectedBus = buses[selectedBusIndex];
+
+                if (seatsToBook <= selectedBus.availableSeats) {
+                    selectedBus.availableSeats -= seatsToBook;
+                    displayBuses();
+                    clearBookingInputs();
+                    showResult('Seats booked successfully!', 'success');
+                } else {
+                    showResult('Not enough seats available.', 'danger');
+                }
+            } else {
+                showResult('Invalid input. Please try again.', 'warning');
+            }
+        }
+
+        function showResult(message, type) {
+            const resultContainer = document.getElementById('result');
+            resultContainer.innerHTML = `<div class="alert alert-${type}" role="alert">${message}</div>`;
+        }
+
+        function clearInputs() {
+            document.getElementById('busNumber').value = '';
+            document.getElementById('destination').value = '';
+            document.getElementById('availableSeats').value = '';
+        }
+
+        function clearBookingInputs() {
+            document.getElementById('selectedBus').value = '';
+            document.getElementById('seatsToBook').value = '';
+        }
+    </script>
+
+
+
